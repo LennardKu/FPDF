@@ -1248,11 +1248,44 @@ protected function _dounderline($x, $y, $txt)
 	$w = $this->GetStringWidth($txt)+$this->ws*substr_count($txt,' ');
 	return sprintf('%.2F %.2F %.2F %.2F re f',$x*$this->k,($this->h-($y-$up/1000*$this->FontSize))*$this->k,$w*$this->k,-$ut/1000*$this->FontSizePt);
 }
+protected function saveGetImageSize ($url = '') {
+  $size = @getimagesize($url);
+  
+  if ($size !== false) {
+      return $size;
+  }
+
+  // If getimagesize() fails, use cURL as a fallback
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // For SSL issues, set to true in production
+  curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // For SSL issues, set to true in production
+  $data = curl_exec($ch);
+  $curlError = curl_error($ch);
+  curl_close($ch);
+
+  if ($data === false) {
+      // Log or handle cURL error
+      $this->Error('cURL error: ' . $curlError);
+      return false;
+  }
+
+  // Use getimagesizefromstring() to get the size from the image data
+  $size = getimagesizefromstring($data);
+  if ($size !== false) {
+      return $size;
+  } else {
+      // Log or handle error if getimagesizefromstring() fails
+      $this->Error('Failed to get image size from string.');
+      return false;
+  }
+}
 
 protected function _parsejpg($file)
 {
 	// Extract info from a JPEG file
-	$a = getimagesize($file);
+	$a = $this->saveGetImageSize($file);
 	if(!$a)
 		$this->Error('Missing or incorrect image file: '.$file);
 	if($a[2]!=2)
